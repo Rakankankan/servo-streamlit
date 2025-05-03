@@ -1,0 +1,50 @@
+import urequests
+import time
+import machine
+import network
+
+# KONEKSI WIFI
+wifi_ssid = 'moonstar'
+wifi_password = '17072005'
+
+def connect_wifi():
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print('Menghubungkan ke WiFi...')
+        sta_if.active(True)
+        sta_if.connect(wifi_ssid, wifi_password)
+        while not sta_if.isconnected():
+            pass
+    print('Terhubung ke WiFi:', sta_if.ifconfig())
+
+connect_wifi()
+
+# SETUP SERVO DI PIN 25
+servo = machine.PWM(machine.Pin(26), freq=50)
+
+def set_servo(angle):
+    duty = int((angle / 180) * 102 + 26)
+    servo.duty(duty)
+
+# LOOP UTAMA
+while True:
+    try:
+        res = urequests.get(
+            "https://servo-control-f3c90-default-rtdb.asia-southeast1.firebasedatabase.app/servo.json",
+            timeout=5  # Tambahkan timeout untuk mencegah hang
+        )
+        if res.status_code == 200:  # Pastikan respons sukses
+            angle = res.json()
+            print("Set angle to:", angle)
+            set_servo(angle)
+        else:
+            print("Gagal mendapatkan data, status code:", res.status_code)
+        res.close()  # Pastikan respons ditutup untuk menghemat memori
+    except OSError as e:
+        print("Network Error:", e)
+    except ValueError as e:
+        print("JSON Parse Error:", e)
+    except Exception as e:
+        print("Unexpected Error:", e)
+    
+    time.sleep(5)  # Tambah interval untuk stabilitas
